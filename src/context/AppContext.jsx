@@ -56,9 +56,11 @@ export function AppProvider({ children }) {
   // --- BADGE SYSTEM ---
   const badge = (() => {
     if (level <= 1) return "🐣"
-    if (level <= 3) return "⭐"
-    if (level <= 5) return "🔥"
-    return "👑"
+    if (level <= 2) return "📚"
+    if (level <= 3) return "🌟"
+    if (level <= 4) return "🏆"
+    if (level <= 5) return "👑"
+    return "💕"
   })()
 
   // --- CHALLENGES ---
