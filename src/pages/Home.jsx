@@ -16,7 +16,7 @@ import client6 from '../images/client-6.jpg'
 
 
 function Home() {
-  const { points, level } = useApp()
+  const { points, level, badge } = useApp()
 
   return (
     // Home Page - Base mobile padding px-4, increasing to px-8 on medium screens
@@ -66,7 +66,7 @@ function Home() {
               </div>
               {/* Recent Badge Button - Changed to the Level 1 badge (🐣) for initial consistency */}
               <div className="bg-light-sky-blue border-4 border-[#14699D] rounded-2xl px-6 py-2 text-3xl font-jomhuria text-black shadow-[6px_8px_4px_#CD90B9] h-[65px] w-1/2 flex items-center justify-center">
-                🐣
+                {badge}
               </div>
             </div>
           </div>

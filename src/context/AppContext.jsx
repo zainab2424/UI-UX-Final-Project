@@ -2,130 +2,136 @@ import { createContext, useContext, useState, useEffect } from 'react'
 
 const AppContext = createContext()
 
-// Constant for the required points per level
-const LEVEL_POINTS_REQUIREMENT = 100;
+const LEVEL_POINTS_REQUIREMENT = 100
 
 export function AppProvider({ children }) {
-  // FIX: Initialize points to 0 and level to 1 for new users
-  const [points, setPoints] = useState(0)
-  const [level, setLevel] = useState(1)
-  const [completedChallenges, setCompletedChallenges] = useState([])
-  
-  // Initial habits and tasks remain the same
-  const [habits] = useState([
-    { id: 1, text: 'Study 2 hours after breakfast daily', completed: false },
-    { id: 2, text: 'Update calendar before bed', completed: false }
-  ])
-  const [tasks] = useState([
-    { id: 1, text: 'Complete Assignment 1', completed: false },
-    { id: 2, text: 'Complete Quiz 2', completed: false },
-    { id: 3, text: 'Complete UX Project', completed: false }
-  ])
 
-  // --- Level Progress Calculations ---
-  // Points required to start the current level (e.g., Level 2 starts at 100)
-  const pointsForCurrentLevelStart = (level - 1) * LEVEL_POINTS_REQUIREMENT
-  
-  // Points earned within the current level (0 to 99)
-  const currentProgress = Math.max(0, points - pointsForCurrentLevelStart) // Use Math.max to prevent negative display
-  
-  // Total points needed to complete the current level (always 100)
-  const pointsNeededForLevelUp = LEVEL_POINTS_REQUIREMENT;
+  // Helper to load from sessionStorage
+  const load = (key, fallback) => {
+    const stored = sessionStorage.getItem(key)
+    return stored ? JSON.parse(stored) : fallback
+  }
 
-  // Percentage completion
-  const progressPercentage = Math.min((currentProgress / pointsNeededForLevelUp) * 100, 100)
+  // --- STORED STATES ---
+  const [points, setPoints] = useState(() => load("points", 0))
+  const [level, setLevel] = useState(() => load("level", 1))
+  const [completedChallenges, setCompletedChallenges] = useState(() =>
+    load("completedChallenges", [])
+  )
 
-  // Level up logic - level increases every 100 points
-  useEffect(() => {
-    const calculatedLevel = Math.floor(points / LEVEL_POINTS_REQUIREMENT) + 1
-    if (calculatedLevel > level) {
-      setLevel(calculatedLevel)
-    }
-  }, [points, level])
+  const [habits, setHabits] = useState(() =>
+    load("habits", [
+      { id: 1, text: "Study 2 hours after breakfast daily", completed: false },
+      { id: 2, text: "Update calendar before bed", completed: false }
+    ])
+  )
 
-  // FIX: Use functional update to ensure state is updated reliably
-  const completeChallenge = (challengeId, pointsAwarded) => {
-    if (!completedChallenges.includes(challengeId)) {
-      setCompletedChallenges([...completedChallenges, challengeId])
-      setPoints(prevPoints => prevPoints + pointsAwarded) // Functional update
-      return true
-    }
-    return false
-  }
+  const [tasks, setTasks] = useState(() =>
+    load("tasks", [
+      { id: 1, text: "Complete Assignment 1", completed: false },
+      { id: 2, text: "Complete Quiz 2", completed: false },
+      { id: 3, text: "Complete UX Project", completed: false }
+    ])
+  )
 
-  // FIX: Use functional update in all setters
-  const toggleHabit = (habitId) => {
-    setHabits(prevHabits => prevHabits.map(h => {
-      if (h.id === habitId && !h.completed) {
-        setPoints(prevPoints => prevPoints + 10) // Functional update
-        return { ...h, completed: true }
-      }
-      return h
-    }))
-  }
+  // --- SYNCHRONIZE TO SESSION STORAGE ---
+  useEffect(() => sessionStorage.setItem("points", JSON.stringify(points)), [points])
+  useEffect(() => sessionStorage.setItem("level", JSON.stringify(level)), [level])
+  useEffect(() => sessionStorage.setItem("habits", JSON.stringify(habits)), [habits])
+  useEffect(() => sessionStorage.setItem("tasks", JSON.stringify(tasks)), [tasks])
+  useEffect(() => sessionStorage.setItem("completedChallenges", JSON.stringify(completedChallenges)), [completedChallenges])
 
-  // FIX: Use functional update in all setters
-  const toggleTask = (taskId) => {
-    setTasks(prevTasks => prevTasks.map(t => {
-      if (t.id === taskId && !t.completed) {
-        setPoints(prevPoints => prevPoints + 15) // Functional update
-        return { ...t, completed: true }
-      }
-      return t
-    }))
-  }
-  
-  // Other functions remain the same
-  const addHabit = (habitText) => {
-    const newHabit = {
-      id: Date.now(),
-      text: habitText,
-      completed: false
-    }
-    setHabits([...habits, newHabit])
-  }
+  // --- LEVEL SYSTEM ---
+  useEffect(() => {
+    const expectedLevel = Math.floor(points / LEVEL_POINTS_REQUIREMENT) + 1
+    if (expectedLevel !== level) setLevel(expectedLevel)
+  }, [points, level])
 
-  const addTask = (taskText) => {
-    const newTask = {
-      id: Date.now(),
-      text: taskText,
-      completed: false
-    }
-    setTasks([...tasks, newTask])
-  }
+  // --- PROGRESS VALUES (Required by Rewards.jsx) ---
+  const pointsForCurrentLevelStart = (level - 1) * LEVEL_POINTS_REQUIREMENT
+  const currentProgress = Math.max(0, points - pointsForCurrentLevelStart)
+  const pointsNeededForLevelUp = LEVEL_POINTS_REQUIREMENT
+  const progressPercentage = Math.min((currentProgress / pointsNeededForLevelUp) * 100, 100)
 
-  const deleteTask = (taskId) => {
-    setTasks(tasks.filter(t => t.id !== taskId))
-  }
+  // --- BADGE SYSTEM ---
+  const badge = (() => {
+    if (level <= 1) return "🐣"
+    if (level <= 3) return "⭐"
+    if (level <= 5) return "🔥"
+    return "👑"
+  })()
 
+  // --- CHALLENGES ---
+  const completeChallenge = (id, awardedPoints) => {
+    if (!completedChallenges.includes(id)) {
+      setCompletedChallenges(prev => [...prev, id])
+      setPoints(p => p + awardedPoints)
+      return true
+    }
+    return false
+  }
 
-  return (
-    <AppContext.Provider value={{
-      points,
-      level,
-      completedChallenges,
-      habits,
-      tasks,
-      // NEW/UPDATED context values for Rewards.jsx progress bar
-      currentProgress,
-      pointsNeededForLevelUp,
-      progressPercentage,
-      completeChallenge,
-      addHabit,
-      toggleHabit,
-      addTask,
-      toggleTask,
-      deleteTask
-    }}>
-      {children}
-    </AppContext.Provider>
-  )
+  // --- HABITS ---
+  const addHabit = text => {
+    setHabits(prev => [...prev, { id: Date.now(), text, completed: false }])
+  }
+
+  const toggleHabit = id => {
+    setHabits(prev =>
+      prev.map(h => h.id === id && !h.completed ? { ...h, completed: true } : h)
+    )
+    setPoints(p => p + 10)
+  }
+
+  // --- TASKS ---
+  const addTask = text => {
+    setTasks(prev => [...prev, { id: Date.now(), text, completed: false }])
+  }
+
+  const toggleTask = id => {
+    setTasks(prev =>
+      prev.map(t => t.id === id && !t.completed ? { ...t, completed: true } : t)
+    )
+    setPoints(p => p + 15)
+  }
+
+  const deleteTask = id => {
+    setTasks(prev => prev.filter(t => t.id !== id))
+  }
+
+  return (
+    <AppContext.Provider value={{
+      points,
+      level,
+      badge,
+      habits,
+      tasks,
+      completedChallenges,
+
+      // Rewards page values
+      currentProgress,
+      pointsNeededForLevelUp,
+      progressPercentage,
+
+      // Functions
+      completeChallenge,
+      addHabit,
+      toggleHabit,
+      addTask,
+      toggleTask,
+      deleteTask,
+      setHabits,
+      setTasks
+    }}>
+      {children}
+    </AppContext.Provider>
+  )
 }
 
 export function useApp() {
-  const context = useContext(AppContext)
-  if (!context) {
-    throw new Error('useApp must be used within AppProvider')
-  }
-  return context
+  const ctx = useContext(AppContext)
+  if (!ctx) throw new Error("useApp must be used within AppProvider")
+  return ctx
 }
+
+
